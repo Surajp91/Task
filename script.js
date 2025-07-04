@@ -1,7 +1,7 @@
 class BOGOSelector {
     constructor() {
         this.selectedOption = 1;
-        this.expandedOption = null;
+        this.expandedOption = 2; // Middle box starts expanded as shown in image
         this.prices = {
             1: { current: 10.00, original: 24.00 },
             2: { current: 18.00, original: 24.00 },
@@ -40,14 +40,11 @@ class BOGOSelector {
                 
                 const option = parseInt(card.dataset.option);
                 
-                // If clicking on the same card that's already selected, toggle expansion
-                if (option === this.selectedOption) {
-                    this.toggleExpansion(option);
-                } else {
-                    // Select new option and expand it
-                    this.selectOption(option);
-                    this.expandOption(option);
-                }
+                // Select the option
+                this.selectOption(option);
+                
+                // Toggle expansion
+                this.toggleExpansion(option);
             });
         });
     }
@@ -80,14 +77,13 @@ class BOGOSelector {
     
     expandOption(optionNumber) {
         // Collapse any currently expanded option
-        if (this.expandedOption !== null) {
+        if (this.expandedOption !== null && this.expandedOption !== optionNumber) {
             this.collapseOption(this.expandedOption);
         }
         
         const card = document.querySelector(`[data-option="${optionNumber}"]`);
-        const content = card.querySelector('.option-content');
         
-        if (card && content) {
+        if (card) {
             card.classList.add('expanded');
             this.expandedOption = optionNumber;
             
@@ -96,7 +92,7 @@ class BOGOSelector {
                 const cardRect = card.getBoundingClientRect();
                 const windowHeight = window.innerHeight;
                 
-                if (cardRect.bottom > windowHeight - 50) {
+                if (cardRect.bottom > windowHeight - 100) {
                     card.scrollIntoView({
                         behavior: 'smooth',
                         block: 'nearest'
@@ -123,10 +119,13 @@ class BOGOSelector {
         cards.forEach(card => {
             const option = parseInt(card.dataset.option);
             
-            if (option === this.selectedOption) {
+            // Remove selected class from all cards first
+            card.classList.remove('selected');
+            
+            // Add selected styling based on radio button state
+            const radio = document.getElementById(`option${option}`);
+            if (radio && radio.checked) {
                 card.classList.add('selected');
-            } else {
-                card.classList.remove('selected');
             }
         });
     }
@@ -149,14 +148,15 @@ class BOGOSelector {
     
     handleDropdownChange(dropdown) {
         // Add visual feedback
-        dropdown.style.borderColor = '#4A90E2';
+        dropdown.style.borderColor = '#FF6B82';
+        
         setTimeout(() => {
             dropdown.style.borderColor = '#ddd';
-        }, 500);
+        }, 800);
         
         // Log the selection
-        const dropdownRow = dropdown.closest('.dropdowns-row');
-        const itemNumber = dropdownRow.querySelector('.item-number').textContent;
+        const selectionRow = dropdown.closest('.selection-row');
+        const itemNumber = selectionRow.querySelector('.item-number').textContent;
         const isSize = dropdown.classList.contains('size-dropdown');
         const type = isSize ? 'Size' : 'Color';
         
@@ -180,13 +180,13 @@ class BOGOSelector {
         const button = document.querySelector('.add-to-cart-btn');
         const originalText = button.textContent;
         
-        button.textContent = 'Added!';
+        button.textContent = 'Added to Cart!';
         button.style.background = '#28a745';
         
         setTimeout(() => {
             button.textContent = originalText;
-            button.style.background = '#FF69B4';
-        }, 1500);
+            button.style.background = '#FF6B82';
+        }, 2000);
     }
     
     getSelections() {
@@ -197,25 +197,34 @@ class BOGOSelector {
         };
         
         if (this.expandedOption !== null) {
+            // Get dropdown selections for expanded option
             const expandedCard = document.querySelector(`[data-option="${this.expandedOption}"]`);
-            const sizeDropdowns = expandedCard.querySelectorAll('.size-dropdown');
-            const colorDropdowns = expandedCard.querySelectorAll('.color-dropdown');
-            sizeDropdowns.forEach((sizeDropdown, index) => {
-                const colorDropdown = colorDropdowns[index];
-                selections.items.push({
-                    item: index + 1,
-                    size: sizeDropdown.value,
-                    color: colorDropdown.value
+            if (expandedCard) {
+                const sizeDropdowns = expandedCard.querySelectorAll('.size-dropdown');
+                const colorDropdowns = expandedCard.querySelectorAll('.color-dropdown');
+                
+                sizeDropdowns.forEach((sizeDropdown, index) => {
+                    const colorDropdown = colorDropdowns[index];
+                    if (colorDropdown) {
+                        selections.items.push({
+                            item: index + 1,
+                            size: sizeDropdown.value,
+                            color: colorDropdown.value
+                        });
+                    }
                 });
-            });
+            }
         }
         
         return selections;
     }
 }
 
+// Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     const bogoSelector = new BOGOSelector();
+    
+    // Setup add to cart button
     const addToCartBtn = document.querySelector('.add-to-cart-btn');
     if (addToCartBtn) {
         addToCartBtn.addEventListener('click', () => {
@@ -224,6 +233,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Handle keyboard navigation
 document.addEventListener('keydown', (e) => {
     if (e.key >= '1' && e.key <= '3') {
         const optionNumber = parseInt(e.key);
@@ -232,6 +242,8 @@ document.addEventListener('keydown', (e) => {
             radio.click();
         }
     }
+    
+    // ESC to collapse all expanded options
     if (e.key === 'Escape') {
         document.querySelectorAll('.option-card.expanded').forEach(card => {
             card.classList.remove('expanded');
